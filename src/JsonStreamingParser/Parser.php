@@ -41,12 +41,13 @@ class Parser {
   private $_unicode_high_surrogate;
   private $_unicode_escape_buffer;
   private $_line_ending;
+  private $_multi_documents;
 
   private $_line_number;
   private $_char_number;
 
 
-  public function __construct($stream, $listener, $line_ending = "\n", $emit_whitespace = false, $buffer_size = 8192) {
+  public function __construct($stream, $listener, $line_ending = "\n", $emit_whitespace = false, $buffer_size = 8192, $multi_documents = false) {
     if (!is_resource($stream) || get_resource_type($stream) != 'stream') {
       throw new InvalidArgumentException("Argument is not a stream");
     }
@@ -68,6 +69,7 @@ class Parser {
     $this->_unicode_escape_buffer = '';
     $this->_unicode_high_surrogate = -1;
     $this->_line_ending = $line_ending;
+    $this->_multi_documents = $multi_documents;
   }
 
 
@@ -259,6 +261,7 @@ class Parser {
         break;
 
       case self::STATE_START_DOCUMENT:
+start_document:
         $this->_listener->start_document();
         if ($c === '[') {
           $this->_start_array();
@@ -271,6 +274,9 @@ class Parser {
         break;
 
       case self::STATE_DONE:
+        if ($this->_multi_documents) {
+            goto start_document;
+        }
         throw new ParsingError($this->_line_number, $this->_char_number,
           "Expected end of document.");
 
